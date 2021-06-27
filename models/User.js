@@ -15,6 +15,11 @@ const User=new Schema({
         default:false
     },
 
+    banned:{
+        type:Boolean,
+        default:false
+    },
+
     password:{
         type:String,
         required:["Password is required ",true]

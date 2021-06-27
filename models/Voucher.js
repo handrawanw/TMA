@@ -10,6 +10,7 @@ const Voucher=new Schema({
         ref:'User'
     },
 
+    
     receiver:{
         type:mongoose.Schema.Types.ObjectId,
         sparse:true,
@@ -18,15 +19,19 @@ const Voucher=new Schema({
 
     code_voucher_idx:{
         type:String,
-        unique:true,
-        required:["Kode Voucher Indodax diperlukan ",true]
+        default:"-"
     },
-
+    
+    tx_type:{
+        type:String,
+        required:["Tipe transaksi harus di isi",true]
+    },
+   
     vouchers_received:{
         type:String,
         default:"Pending"
     },
-
+    
     saldo:{
         type:Number,
         default:0

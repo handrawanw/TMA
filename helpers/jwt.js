@@ -6,11 +6,9 @@ class JWT {
         const KUNCI=process.env.JWT_KUNCI;
         return new Promise((resolve,reject)=>{
             jwt.sign({
-                output_token:{
-                    id,
-                    payload
-                },
-                exp:Date.now()+86400000
+                id,
+                payload,
+                iat: Math.floor(Date.now() / 1000) - 30
             },KUNCI,{algorithm:"HS512"},(err,token)=>{
                 if(err) throw reject(err);
                 resolve(token);

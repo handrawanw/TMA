@@ -19,6 +19,12 @@ class Utils {
         return String(mssg);
     }
 
+    static VoucherRandom(){
+        const ran=crypto.randomBytes(512*64);
+        let out=ran.toString('hex').toUpperCase().slice(1,64);
+        return "BTC-IDR-"+out;
+    }
+
 }
 
 module.exports=Utils;
