@@ -29,17 +29,17 @@ const Project=new Schema({
 
     frozen_balance:{
         type:Number,
-        min:1e+4
+        default:0
     },
 
     session_remaining:{
         type:Number,
-        default:Date.now()
+        default:0
     },
 
     expired:{
         type:Number,
-        default:Date.now()
+        default:0
     }
     
 },{
