@@ -5,7 +5,7 @@
  
 # Sedang Proses Development
 ## Backend
-- [x] User
+- [x] User & Hak User Role
 - [x] Sistem Voucher
 - [x] Project Lock & Earn Program
 - [x] Cron Job Profit Lock & Earn Program
