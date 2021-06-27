@@ -1,3 +1,4 @@
 {
-    "User":["email","full_name","role","banned","emailVerification","createdAt","updatedAt"]
+    "User":["email","full_name","role","banned","emailVerification","createdAt","updatedAt"],
+    "DepositWithdrawVoucher":["sender","code_voucher_idx","receiver","tx_type","vouchers_received","saldo","description","reason"]
 }

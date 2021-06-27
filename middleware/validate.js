@@ -37,6 +37,11 @@ class TradeValidation {
                 return [
                     body('saldo','saldo withdraw anda masih kosong').notEmpty().isNumeric(),
                 ];
+            case "voucherIdParams":
+                return [
+                    param('id_voucher','id voucher anda masih kosong').notEmpty(),
+                    param('id_voucher','id voucher anda tidak valid').isMongoId()
+                ];
 
             default:
                 return [];

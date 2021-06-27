@@ -1,7 +1,10 @@
 const {
     Wallet,
-    Voucher
+    Voucher,
+    Notification
 } = require("../models");
+
+const Select=require("../helpers/select.json");
 
 class VoucherPengguna {
 
@@ -22,9 +25,26 @@ class VoucherPengguna {
                     throw new Error("Deposit voucher gagal terbuat, silakan coba lagi !");
                 }
             }else{
-                throw new Error(`Voucher ini ${code_voucher_idx} sudah anda buat, silakan coba yang lain !`);
+                throw new Error(`Voucher ini ${code_voucher_idx} sudah digunakan, silakan coba yang lain !`);
             }
         }).catch(next);
+    }
+
+    static depositSenderReject(req,res,next){
+        const {id}=req.decoded;
+        const {id_voucher}=req.params;
+        Voucher.findOneAndDelete({
+            _id:id_voucher,sender:id,vouchers_received:"Pending",tx_type:"Deposit"
+         }).then((Voucher) => {
+             if (Voucher) {
+                 res.status(200).json({
+                     message: "Permintaan Deposit Voucher anda berhasil di batalkan",
+                     Voucher
+                 });
+             } else {
+                 throw new Error("Deposit tidak ditemukan, silakan coba lagi !");
+             }
+         }).catch(next);
     }
 
     static depositSender(req,res,next){
@@ -32,7 +52,7 @@ class VoucherPengguna {
         const {status_voucher="Pending"}=req.body;
         Voucher.find({
            sender:id,vouchers_received:status_voucher,tx_type:"Deposit"
-        }).then((Voucher) => {
+        },Select.DepositWithdrawVoucher).then((Voucher) => {
             if (Voucher) {
                 res.status(200).json({
                     message: "Permintaan Withdraw Voucher anda",
@@ -73,12 +93,35 @@ class VoucherPengguna {
         }).catch(next);
     }
 
+    static withdrawVoucherReject(req, res, next) {
+        const {id}=req.decoded;
+        const {id_voucher}=req.params;
+        Voucher.findOne({_id:id_voucher,vouchers_received:"Pending",receiver:id,sender:undefined,code_voucher_idx:"-"}).then(async(VoucherRedem)=>{
+            if(VoucherRedem){
+                let WalletSender=await Wallet.findOne({user:id});
+                if(WalletSender){
+                    WalletSender.balance+=VoucherRedem.saldo;
+                    await WalletSender.save();
+                    await VoucherRedem.delete();
+                    res.status(200).json({
+                        message:`Voucher berhasil dicancel`,
+                        VoucherRedem 
+                    });
+                }else{
+                    throw new Error(`Wallet tidak ditemukan`);
+                }
+            }else{
+                throw new Error(`Voucher tidak ditemukan, silakan coba lagi !!`);
+            }
+        }).catch(next);
+    }
+
     static withdrawReceiver(req,res,next){
         const {id}=req.decoded;
         const {status_voucher="Pending"}=req.body;
         Voucher.find({
            receiver:id,vouchers_received:status_voucher,tx_type:"Withdraw"
-        }).then((Voucher) => {
+        },Select.DepositWithdrawVoucher).then((Voucher) => {
             if (Voucher) {
                 res.status(200).json({
                     message: "Permintaan Withdraw Voucher anda",
@@ -90,15 +133,32 @@ class VoucherPengguna {
         }).catch(next);
     }
 
-    static konfirmasiVoucher(req, res, next) {
-        const { code_voucher_idx } = req.body;
-        Voucher.findOne({ code_voucher_idx }).then((Voucher) => {
-            if (Voucher) {
-                res.status(200).json({
-                    message: "Voucher ditemukan",
-                    Voucher
+    static setorCodeVoucher(req,res,next){
+        const {id}=req.decoded;
+        const {id_voucher}=req.params;
+        const {code_voucher_idx}=req.body;
+        Voucher.findOne({_id:id_voucher,vouchers_received:"Pending",tx_type:"Withdraw"}).populate("receiver").then(async(VoucherAccount)=>{
+            if(VoucherAccount){
+                VoucherAccount.sender=id;
+                VoucherAccount.code_voucher_idx=code_voucher_idx;
+                VoucherAccount.vouchers_received="Approved";
+                await VoucherAccount.save();
+                await Notification.create({
+                    user:VoucherAccount.receiver._id,
+                    tx_status:"Deposit Diterima",
+                    title:"Deposit Voucher",
+                    description:`Hallo ${VoucherAccount.receiver.full_name},
+                        Withdraw anda sudah kami proses, 
+                        Kode Voucher ${VoucherAccount.code_voucher_idx}
+                        dengan saldo ${VoucherAccount.saldo}.
+                        Terima kasih telah menggunakan TMA(Trader My Asset),
+                    `
                 });
-            } else {
+                res.status(200).json({
+                    message:`Kode Voucher ${VoucherAccount.code_voucher_idx} berhasil disetor`,
+                    Voucher:VoucherAccount
+                });
+            }else{
                 throw new Error("Voucher tidak ditemukan");
             }
         }).catch(next);
@@ -109,9 +169,9 @@ class VoucherPengguna {
         const { code_voucher_idx, email, saldo } = req.body;
         Voucher.findOne({ code_voucher_idx,vouchers_received:"Pending" }).populate("sender").then((VoucherAccount) => {
             if (VoucherAccount) {
-                if (VoucherAccount.sender.email === email) {
+                if (VoucherAccount.sender&&VoucherAccount.sender.email === email) {
                     VoucherAccount.saldo = saldo;
-                    VoucherAccount.receiver=id;
+                    VoucherAccount.receiver=id;// FOREIGN KEY RECEIVER
                     VoucherAccount.vouchers_received="Approved";
                     VoucherAccount.save();
                     return VoucherAccount;
@@ -124,6 +184,16 @@ class VoucherPengguna {
         }).then(async (VoucherAccount) => {
             let WalletSender = await Wallet.findOne({ user: VoucherAccount.sender, active: true });
             if(WalletSender){
+                await Notification.create({
+                    user:VoucherAccount.sender._id,
+                    tx_status:"Deposit Diterima",
+                    title:"Deposit Voucher",
+                    description:`Hallo ${VoucherAccount.sender.full_name},
+                        Deposit anda sudah kami terima dengan Kode Voucher ${VoucherAccount.code_voucher_idx}
+                        dengan saldo ${VoucherAccount.saldo}.
+                        Terima kasih telah menggunakan TMA(Trader My Asset),
+                    `
+                });
                 WalletSender.balance += VoucherAccount.saldo;
                 WalletSender.save();
                 return VoucherAccount;
