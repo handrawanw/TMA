@@ -10,10 +10,11 @@ const Project=new Schema({
         ref:'User'
     },
 
-    project_name:{
-        type:String,
-        required:["Project name harus di isi",true]
-    },    
+    detail_project:{
+        type:mongoose.Schema.Types.ObjectId,
+        sparse:true,
+        ref:"CategoryProject"
+    },
 
     collected:{
         type:Number,
@@ -31,8 +32,13 @@ const Project=new Schema({
         min:1e+4
     },
 
+    session_remaining:{
+        type:Number,
+        default:Date.now()
+    },
+
     expired:{
-        type:Date,
+        type:Number,
         default:Date.now()
     }
     
@@ -44,6 +50,6 @@ const Project=new Schema({
 
 const Collection=mongoose.model("Project",Project);
 
-Collection.createIndexes({user:-1,progress:-1});
+Collection.createIndexes({user:-1,category_project:-1});
 
 module.exports=Collection;

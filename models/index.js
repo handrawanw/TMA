@@ -4,6 +4,7 @@ const Wallet=require("./Wallet");
 const Project=require("./Project");
 const Voucher=require("./Voucher");
 const Notification=require("./Notification");
+const CategoryDetail=require("./CategoryDetail");
 
 module.exports={
     WalletCrypto,
@@ -11,5 +12,6 @@ module.exports={
     Wallet,
     Project,
     Voucher,
-    Notification
+    Notification,
+    CategoryDetail
 };

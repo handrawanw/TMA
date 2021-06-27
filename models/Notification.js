@@ -14,6 +14,11 @@ const Notification=new Schema({
         default:"Success"
     },
 
+    is_read:{
+        type:Boolean,
+        default:false
+    },
+
     title:{
         type:String,
         required:["Title notification dibutuhkan",true]

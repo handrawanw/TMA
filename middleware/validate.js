@@ -42,6 +42,24 @@ class TradeValidation {
                     param('id_voucher','id voucher anda masih kosong').notEmpty(),
                     param('id_voucher','id voucher anda tidak valid').isMongoId()
                 ];
+            case "ValidateProjectAdd":
+                return [
+                    body('project_name','Project name tidak boleh kosong').notEmpty(),
+                    body('category','category name tidak boleh kosong').notEmpty(),
+                    body('profit_interest','Profit interest tidak boleh kosong').notEmpty(),
+                    body('profit_interest','Profit interest harus numeric').isNumeric(),
+                    body('profit_interest_week','profit interset week tidak boleh kosong').optional(),
+                    body('min_balance','Minimal balance tidak boleh kosong').notEmpty(),
+                    body('min_balance','Minimal balance harus numeric').isNumeric(),
+                    body('max_balance','Maksimal balance tidak boleh kosong').notEmpty(),
+                    body('max_balance','Maksimal balance harus numeric').isNumeric(),
+                    body('session_time','Sesi Waktu tidak boleh kosong').notEmpty(),
+                    body('session_time','Sesi Waktu harus numeric').isNumeric(),
+                ];
+            case "ValidateProjectParamsID":
+                return [
+                    param('id_project','id project tidak boleh kosong').notEmpty(),
+                ];
 
             default:
                 return [];

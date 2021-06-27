@@ -25,6 +25,13 @@ class Utils {
         return "BTC-IDR-"+out;
     }
 
+    static DateMsExport(){
+        return {
+            _1days:86400000,
+            _1jam:3600000,
+        }
+    }
+
 }
 
 module.exports=Utils;
