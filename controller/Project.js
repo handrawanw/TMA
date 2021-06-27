@@ -39,12 +39,23 @@ class LEPProject {
             let OrderProject=await Project.create({
                 expired:Date.now()+ProjectDetail.session_time,
                 frozen_balance,
+                user:id,
                 session_remaining:Date.now()+ProjectDetail.session_time,
                 detail_project:ProjectDetail._id
             });
             res.status(200).json({
                 message:`Paket ${ProjectDetail.category} berhasil ditambahkan`,
                 OrderProject
+            });
+        }).catch(next);
+    }
+
+    static myProject(req,res,next){
+        const {id}=req.decoded;
+        Project.find({user:id}).then((Project)=>{
+            res.status(200).json({
+                message:"Daftar project anda",
+                Project
             });
         }).catch(next);
     }

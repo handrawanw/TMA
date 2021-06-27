@@ -60,6 +60,12 @@ class TradeValidation {
                 return [
                     param('id_project','id project tidak boleh kosong').notEmpty(),
                 ];
+            case "ValidateLepCreate":
+                return [
+                    body('frozen_balance','frozen balance tidak boleh kosong').notEmpty(),
+                    body('frozen_balance','frozen balance harus numeric').isNumeric(),
+                    body('category_project','category name tidak boleh kosong').notEmpty(),
+                ];
 
             default:
                 return [];

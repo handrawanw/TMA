@@ -46,6 +46,11 @@ app.use(cookieParser());
 require("./models");
 // model
 
+// cron
+const cronJobs=require("./cronJob");
+cronJobs.HitungProfit();
+// cron
+
 // router
 app.use(require("./router/index"));
 app.use(require("./middleware/errHandler"))

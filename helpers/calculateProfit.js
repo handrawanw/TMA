@@ -1,30 +1,42 @@
 const {
-    CategoryDetail
+    Project
 }=require("../models");
 
 const {
     DateMsExport
 }=require("./utils");
 class CalculateProfit {
+    
+    static ResultCalculateProfit(){
 
-    static ResultCalculateProfit({category_project="EMPTY",frozen_balance}){
-        return CategoryDetail.findOne({category:category_project}).then((ProjectDetail)=>{
+        Project.find({}).populate("detail_project").then(async(ProjectStart)=>{
             const {_1days}=DateMsExport;
-            if(ProjectDetail){
-                return {
-                    remaining_time:Date.now()+ProjectDetail.session_time,
-                    profit_generated:0,
-                    ProjectDetail
-                };
-            }else{
-                return {
-                    profit:0,
-                    remaining_time:0,
-                    profit_generated:0,
-                    ProjectDetail
-                };
+            for(let item of ProjectStart){
+                let sesion_rm=Number(item.expired-Date.now())/_1days;
+                let rm_sesi=item.detail_project.session_time;
+                let Permenit=Number(rm_sesi/_1days)-sesion_rm;
+                let profit_1bulan=Number(item.frozen_balance*item.detail_project.profit_interest)/100;
+                let profit_1week=Number(item.frozen_balance*item.detail_project.profit_interest_week)/100;
+                let Collect=Number(Permenit*profit_1week)+Number(Permenit*profit_1bulan);
+                console.log(Collect);
+
+                if(Date.now()>item.expired){
+                    await Project.findOneAndUpdate({_id:item._id},{
+                        progress:"Finish",
+                        collected:Collect,
+                        session_remaining:sesion_rm,
+                    });
+                }else{
+                    await Project.findOneAndUpdate({_id:item._id},{
+                        collected:Collect,
+                        session_remaining:sesion_rm,
+                    });
+                }
+                // console.log(item);
+                // console.log(sesion_rm);
             }
         });
+    
     }
 
 }
