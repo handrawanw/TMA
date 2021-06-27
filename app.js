@@ -56,7 +56,7 @@ app.use(require("./router/index"));
 app.use(require("./middleware/errHandler"))
 // router
 
-require("./wawan");
+// require("./wawan");
 
 app.listen(PORT, (err) => {
     if (err) throw err;
