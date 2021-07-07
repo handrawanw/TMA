@@ -4,7 +4,7 @@ const {ResultCalculateProfit}=require("./helpers/calculateProfit");
 class CronJobs {
 
     static HitungProfit(){
-        cron.schedule("*/60 * * * *",()=>{
+        cron.schedule("*/5 * * * *",()=>{
             ResultCalculateProfit();
         });
     }

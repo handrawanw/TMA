@@ -17,7 +17,9 @@ class CalculateProfit {
                 let Permenit=Number(rm_sesi/_1days)-sesion_rm;
                 let profit_1bulan=Number(item.frozen_balance*item.detail_project.profit_interest)/100;
                 let profit_1week=Number(profit_1bulan*item.detail_project.profit_interest_week)/100;
-                let Collect=Number(Permenit*profit_1week)+Number(Permenit*profit_1bulan);
+                let Collect=Number(Permenit*profit_1week)+Number(Permenit*profit_1bulan)/item.detail_project.profit_interest;
+                // let tes=Number(150000*item.detail_project.profit_interest)/100;
+
                 if(Date.now()>item.expired){
                     await Project.findOneAndUpdate({_id:item._id},{
                         progress:"Finish",
