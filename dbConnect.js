@@ -1,8 +1,8 @@
 const mongoose=require("mongoose");
 
 const dbConnect=()=>{
-
-    const URI="mongodb://localhost:27017/transactions";
+    const URI=process.env.MONGO_URL;
+    // const URI="mongodb://localhost:27017/transactions";
     mongoose.connect(URI,{useUnifiedTopology:true,useCreateIndex:true,useNewUrlParser:true,useFindAndModify:false,connectTimeoutMS:15000});
     let db=mongoose.connection;
     
