@@ -1,20 +1,22 @@
 const {VerifyToken}=require("../helpers/jwt");
-const {OtpVerify,OtpGenerate}=require("otp-cache");
+const {OtpVerify}=require("otp-cache");
 
+const PASSWD=process.env.PASSWD;
 class Auth {
 
-    static AuthOtpGenerate(req,res,next){
-        OtpGenerate({digits:32,type_code:"alphanumeric",time:60}).then((OTP)=>{
+    static AuthOTPSecretVerified(req,res,next){
+        const {token}=req.body;
+        OtpVerify({otp_code:token,secret:PASSWD}).then((OTP)=>{
             req.OTP=OTP;
             next();
         }).catch(next);
     }
 
-    static AuthOtpVerify(req,res,next){
-        const {token}=req.params;
-        OtpVerify({otp_code:String(token)}).then(()=>{
+    static AuthOTPVerified(req,res,next){
+        const {token}=req.body;
+        OtpVerify({otp_code:token}).then(()=>{
             next();
-        }).catch(next); 
+        }).catch(next);
     }
 
     static AuthJwt(req,res,next){

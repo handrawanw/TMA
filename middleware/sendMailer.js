@@ -1,9 +1,8 @@
 const {createTransport}=require("nodemailer");
-
+const {OtpGenerate}=require("otp-cache");
 class Mailer {
 
-    static EmailTester(req,res,next){
-        const OTP=req.OTP;
+    static EmailRegister(req,res,next){
         const CONFIG={
             USER:process.env.EMAIL_USER,
             PASS:process.env.EMAIL_PASS
@@ -37,7 +36,6 @@ class Mailer {
                 });
             }
         });
-
     }
 
 }

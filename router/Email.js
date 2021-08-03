@@ -2,11 +2,10 @@ const express=require("express");
 const Router=express.Router();
 
 const {
-    AuthJwt,AuthRoleUser,
-    AuthOtpVerify,
+    
 }=require("../middleware/Auth");
-const {validate,viewValidateError}=require("../middleware/validate");
+const {}=require("../middleware/sendMailer");
 
-Router.post("/verifyRegister",AuthOtpVerify);
+Router.post("/verifyRegister");
 
 module.exports=Router;
