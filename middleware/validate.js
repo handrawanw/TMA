@@ -14,6 +14,15 @@ class TradeValidation {
                     body('password', 'Password anda masih kosong kosong').notEmpty().isString(),
                     body('full_name', 'Nama lengkap anda masih kosong kosong').notEmpty().isString(),
                 ];
+            case "order":
+                return [
+                    body('type', 'type anda masih kosong kosong dan harus bertipe LIMIT/INSTANT').notEmpty().isIn(["LIMIT","INSTANT"]),
+                    body('price', 'price anda masih kosong kosong').notEmpty().isNumeric(),
+                    body('amount', 'amount anda masih kosong kosong').notEmpty().isNumeric(),
+                    body('side', 'side anda masih kosong kosong dan harus bertipe BUY/SELL').notEmpty().isIn(["BUY","SELL"]),
+                    body('base', 'base anda masih kosong kosong').notEmpty(),
+                    body('quote', 'quote anda masih kosong kosong').notEmpty(),
+                ];
             case "walletOne":
                 return [
                     param('id_wallet','field id wallet anda masih kosong').notEmpty().isMongoId()

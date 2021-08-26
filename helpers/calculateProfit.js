@@ -9,7 +9,7 @@ class CalculateProfit {
     
     static ResultCalculateProfit(){
 
-        Project.find({}).populate("detail_project").then(async(ProjectStart)=>{
+        Project.find({expired:{$gt:Date.now()}}).populate("detail_project").then(async(ProjectStart)=>{
             const {_1days}=DateMsExport;
             for(let item of ProjectStart){
                 let sesion_rm=Number(item.expired-Date.now())/_1days;
@@ -22,8 +22,7 @@ class CalculateProfit {
                 if(Date.now()>item.expired){
                     await Project.findOneAndUpdate({_id:item._id},{
                         progress:"Finish",
-                        collected:Collect,
-                        session_remaining:sesion_rm,
+                        session_remaining:0,
                     });
                 }else{
                     await Project.findOneAndUpdate({_id:item._id},{
