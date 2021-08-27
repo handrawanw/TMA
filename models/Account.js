@@ -11,7 +11,7 @@ const Schema=new mongoose.Schema({
     },
     balance:{
         type:Number,
-        default:10e+6
+        default:1e+5
     },
     frozen_balance:{
         type:Number,

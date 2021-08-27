@@ -6,8 +6,8 @@ class Tx {
 
     static createAccount(req, res, next) {
         const { id } = req.decoded;
-        const { currency } = req.body;
-        Account.create({ user: id, currency }).then((data) => {
+        const { currency, balance } = req.body;
+        Account.create({ user: id, currency,balance }).then((data) => {
             res.status(200).json({
                 message: "Successfull",
                 data
@@ -25,35 +25,41 @@ class Tx {
         await session.incrementTransactionNumber();
 
         try {
+
             let Remaining = side && typeof (side) === "string" && side.toUpperCase() === "BUY" ? Number(amount) : Number(amount) * Number(price) || 0;
             let STypes = side && typeof (side) === "string" && side.toUpperCase() === "BUY" ? base : quote;
-            let WalletAccount = await Account.findOne({ user: id, currency: STypes }).session(session);
-            let Saldo = WalletAccount && WalletAccount.balance > 0 && WalletAccount.balance;
-            if (Saldo < Remaining) {
+            let STypesOrder = side && typeof (side) === "string" && side.toUpperCase() === "BUY" ? "SELL" : "BUY";
+            let QPriceOrder = side && typeof (side) === "string" && side.toUpperCase() === "BUY" ? {$lte:Number(price)} : {$gte:Number(price)};
+            let WalletAccount = await Account.findOne({ user: id, currency: STypes, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
+            let Saldo = WalletAccount && WalletAccount.balance > 0 ? WalletAccount.balance:0;
+
+            console.log(Saldo,amount,"WAWAN",WalletAccount)
+            if (Saldo < Number(amount)) {
                 throw new Error("Maaf saldo anda tidak cukup");
             }
             
-            let TxOrder = await OrderTx.find({}).session(session);
+            let TxOrder = await OrderTx.find({side:STypesOrder,price:QPriceOrder,amount:{$gt:0}}).session(session);
             let Market = Object.assign([], TxOrder);
             let MakerOrder=[];
             let TakerOrder=[];
 
             if (TxOrder.length > 0) {
                 for (let item of Market) {
-                    item.total = item.price * item.amount;
+
                     if (Remaining > 0) {
+                        item.total = Number(item.price * item.amount);
                         if (Remaining >= item.total) {
                             item.purchased = item.amount;
                             Remaining -= item.total;
-                            item.funds = item.price * item.purchased;
                             item.amount = 0;
-                            item.total = 0;
+                            item.total = item.price * item.amount;
+                            item.funds = item.purchased * item.price;
                         } else if (Remaining < item.total) {
                             item.purchased = Remaining / item.price;
-                            item.total -= Remaining;
                             item.amount -= item.purchased;
-                            item.funds = item.price * item.purchased;
                             Remaining = 0;
+                            item.total = item.price * item.amount;
+                            item.funds = item.purchased * item.price;
                         }
                     } else {
                         break;
@@ -62,7 +68,7 @@ class Tx {
                     if (item.hasOwnProperty("purchased")) {
 
                         if(side&&side.toUpperCase()==="BUY"){
-                            let ReceiveCryptoBuy=await Account.findOne({user:item.user,currency:quote}).session(session);
+                            let ReceiveCryptoBuy=await Account.findOne({user:item.user, currency:quote, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
                             if(ReceiveCryptoBuy){
                                 ReceiveCryptoBuy.balance+=item.purchased;
                                 await ReceiveCryptoBuy.save({session});
@@ -70,7 +76,7 @@ class Tx {
                                 Remaining+=item.funds;
                                 await session.abortTransaction();
                             }
-                            let ReduceBalanceBuy=await Account.findOne({user:item.user,currency:base}).session(session);
+                            let ReduceBalanceBuy=await Account.findOne({user:item.user, currency:base, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
                             if(ReduceBalanceBuy){
                                 ReduceBalanceBuy.balance-=item.purchased*price;
                                 await ReduceBalanceBuy.save({session});
@@ -79,7 +85,7 @@ class Tx {
                                 await session.abortTransaction();
                             }
                         }else if(side&&side.toUpperCase()==="SELL"){
-                            let ReceiveCryptoSell=await Account.findOne({user:item.user,currency:base}).session(session);
+                            let ReceiveCryptoSell=await Account.findOne({user:item.user, currency:base, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
                             if(ReceiveCryptoSell){
                                 ReceiveCryptoSell.balance+=item.purchased*price;
                                 await ReceiveCryptoSell.save({session});
@@ -87,7 +93,7 @@ class Tx {
                                 Remaining+=item.funds;
                                 await session.abortTransaction();
                             }
-                            let ReduceBalanceSell=await Account.findOne({user:item.user,currency:quote}).session(session);
+                            let ReduceBalanceSell=await Account.findOne({user:item.user, currency:quote, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
                             if(ReduceBalanceSell){
                                 ReduceBalanceSell.balance-=item.purchased;
                                 await ReduceBalanceSell.save({session});
@@ -112,13 +118,14 @@ class Tx {
                 }
             }
 
-            console.log(Saldo >= Remaining,Saldo,Remaining)
+            // console.log(Saldo >= Remaining,Saldo,Remaining)
             if (Remaining > 0) {
-                if (Saldo >= Remaining) {
-                    WalletAccount.balance -= Number(amount);
-                    let TxStatus = await WalletAccount.save({ session });
-                    if (TxStatus) {
-                        if (side && typeof (side) === "string" && side.toUpperCase() === "SELL") {
+                if (Saldo >= amount) {
+                    WalletAccount.balance -= Number(Remaining);
+                    if (side && typeof (side) === "string" && side.toUpperCase() === "SELL") {
+                        WalletAccount.balance -= Number(Remaining / price);
+                        let TxBuy=await WalletAccount.save({ session });
+                        if(TxBuy){
                             MakerOrder=await OrderTx.create([{
                                 user: id,
                                 base: "USDT",
@@ -126,9 +133,13 @@ class Tx {
                                 type: type,
                                 side: side,
                                 price: price,
-                                amount: Remaining
+                                amount: Remaining / price,
                             }], { session });
-                        } else if (side && typeof (side) === "string" && side.toUpperCase() === "BUY") {
+                        }
+                    } else if (side && typeof (side) === "string" && side.toUpperCase() === "BUY") {
+                        WalletAccount.balance -= Number(Remaining);
+                        let TxSell=await WalletAccount.save({ session });
+                        if(TxSell){
                             MakerOrder=await OrderTx.create([{
                                 user: id,
                                 base: "USDT",
@@ -139,16 +150,14 @@ class Tx {
                                 amount: Remaining / price
                             }], { session });
                         }
-                        if (session.inTransaction()) {
-                            await session.commitTransaction();
-                        }
-                        res.status(200).json({
-                            message: "Successfull",
-                            Order:MakerOrder
-                        });
-                    } else {
-                        throw new Error("Transaksi gagal dibuat");
                     }
+                    if (session.inTransaction()) {
+                        await session.commitTransaction();
+                    }
+                    res.status(200).json({
+                        message: "Successfull",
+                        Order:MakerOrder
+                    });
                 }
             }else{
                 res.status(200).json({
@@ -156,6 +165,7 @@ class Tx {
                     Order:TakerOrder
                 });
             }
+
         } catch (error) {
             if (session.inTransaction()) {
                 await session.abortTransaction();
