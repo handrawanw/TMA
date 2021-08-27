@@ -45,12 +45,14 @@ class Tx {
                         if (Remaining >= item.total) {
                             item.purchased = item.amount;
                             Remaining -= item.total;
+                            item.funds = item.price * item.purchased;
                             item.amount = 0;
                             item.total = 0;
                         } else if (Remaining < item.total) {
                             item.purchased = Remaining / item.price;
                             item.total -= Remaining;
                             item.amount -= item.purchased;
+                            item.funds = item.price * item.purchased;
                             Remaining = 0;
                         }
                     } else {
@@ -58,7 +60,54 @@ class Tx {
                     }
 
                     if (item.hasOwnProperty("purchased")) {
-                        console.log(item.purchased)
+
+                        if(side&&side.toUpperCase()==="BUY"){
+                            let ReceiveCryptoBuy=await Account.findOne({user:item.user,currency:quote}).session(session);
+                            if(ReceiveCryptoBuy){
+                                ReceiveCryptoBuy.balance+=item.purchased;
+                                await ReceiveCryptoBuy.save({session});
+                            }else{
+                                Remaining+=item.funds;
+                                await session.abortTransaction();
+                            }
+                            let ReduceBalanceBuy=await Account.findOne({user:item.user,currency:base}).session(session);
+                            if(ReduceBalanceBuy){
+                                ReduceBalanceBuy.balance-=item.purchased*price;
+                                await ReduceBalanceBuy.save({session});
+                            }else{
+                                Remaining+=item.funds;
+                                await session.abortTransaction();
+                            }
+                        }else if(side&&side.toUpperCase()==="SELL"){
+                            let ReceiveCryptoSell=await Account.findOne({user:item.user,currency:base}).session(session);
+                            if(ReceiveCryptoSell){
+                                ReceiveCryptoSell.balance+=item.purchased*price;
+                                await ReceiveCryptoSell.save({session});
+                            }else{
+                                Remaining+=item.funds;
+                                await session.abortTransaction();
+                            }
+                            let ReduceBalanceSell=await Account.findOne({user:item.user,currency:quote}).session(session);
+                            if(ReduceBalanceSell){
+                                ReduceBalanceSell.balance-=item.purchased;
+                                await ReduceBalanceSell.save({session});
+                            }else{
+                                Remaining+=item.funds;
+                                await session.abortTransaction();
+                            }
+                        }
+
+                        await OrderTx.findOneAndUpdate({
+                            user:item.user,
+                            _id:item._id
+                        },{
+                            amount:item.amount
+                        },{strict:true}).session(session);
+
+                        if (session.inTransaction()) {
+                            await session.commitTransaction();
+                        }
+                        
                     }
                 }
             }
@@ -79,7 +128,6 @@ class Tx {
                                 price: price,
                                 amount: Remaining
                             }], { session });
-                            console.log(MakerOrder)
                         } else if (side && typeof (side) === "string" && side.toUpperCase() === "BUY") {
                             MakerOrder=await OrderTx.create([{
                                 user: id,
@@ -90,7 +138,6 @@ class Tx {
                                 price: price,
                                 amount: Remaining / price
                             }], { session });
-                            console.log(MakerOrder)
                         }
                         if (session.inTransaction()) {
                             await session.commitTransaction();
