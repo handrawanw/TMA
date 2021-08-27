@@ -19,10 +19,6 @@ class Tx {
         const { id } = req.decoded;
         const { amount, price, side, type, base, quote } = req.body;
         let session = await mongoose.startSession();
-        session.startTransaction({
-            readConcern: { level: "snapshot" }, writeConcern: "majority"
-        });
-        await session.incrementTransactionNumber();
 
         try {
 
@@ -33,7 +29,6 @@ class Tx {
             let WalletAccount = await Account.findOne({ user: id, currency: STypes, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
             let Saldo = WalletAccount && WalletAccount.balance > 0 ? WalletAccount.balance:0;
 
-            console.log(Saldo,amount,"WAWAN",WalletAccount)
             if (Saldo < Number(amount)) {
                 throw new Error("Maaf saldo anda tidak cukup");
             }
@@ -45,7 +40,10 @@ class Tx {
 
             if (TxOrder.length > 0) {
                 for (let item of Market) {
-
+                    session.startTransaction({
+                        readConcern: { level: "snapshot" }, writeConcern: "majority"
+                    });
+                    await session.incrementTransactionNumber();
                     if (Remaining > 0) {
                         item.total = Number(item.price * item.amount);
                         if (Remaining >= item.total) {
