@@ -8,7 +8,7 @@ class JWT {
             jwt.sign({
                 id,
                 payload,
-                iat: Math.floor(Date.now() / 1000) - 30
+                // iat: Math.floor(Date.now() / 1000) - 30
             },KUNCI,{algorithm:"HS512"},(err,token)=>{
                 if(err) throw reject(err);
                 resolve(token);

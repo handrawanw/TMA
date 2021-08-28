@@ -66,47 +66,108 @@ class Tx {
                     if (item.hasOwnProperty("purchased")) {
 
                         if(side&&side.toUpperCase()==="BUY"){
-                            let ReceiveCryptoBuy=await Account.findOne({user:item.user, currency:quote, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
-                            if(ReceiveCryptoBuy){
-                                ReceiveCryptoBuy.balance+=item.purchased;
-                                await ReceiveCryptoBuy.save({session});
+                            let BuyerReceiveCryptoBuy=await Account.findOne({user:id, currency:quote, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
+                            if(BuyerReceiveCryptoBuy){
+                                BuyerReceiveCryptoBuy.balance+=item.purchased;
+                                await BuyerReceiveCryptoBuy.save({session});
                             }else{
-                                Remaining+=item.funds;
-                                await session.abortTransaction();
+                                if (session.inTransaction()) {
+                                    Remaining+=item.funds;
+                                    await session.abortTransaction();
+                                }
                             }
-                            let ReduceBalanceBuy=await Account.findOne({user:item.user, currency:base, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
-                            if(ReduceBalanceBuy){
-                                ReduceBalanceBuy.balance-=item.purchased*price;
-                                await ReduceBalanceBuy.save({session});
+                            let BuyerReduceBalanceBuy=await Account.findOne({user:id, currency:base, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
+                            if(BuyerReduceBalanceBuy){
+                                BuyerReduceBalanceBuy.balance-=item.purchased*price;
+                                await BuyerReduceBalanceBuy.save({session});
                             }else{
-                                Remaining+=item.funds;
-                                await session.abortTransaction();
+                                if (session.inTransaction()) {
+                                    Remaining+=item.funds;
+                                    await session.abortTransaction();
+                                }
                             }
+
+                            let SellerReceiveCryptoBuy=await Account.findOne({user:item.user, currency:base, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
+                            if(SellerReceiveCryptoBuy){
+                                SellerReceiveCryptoBuy.balance+=item.purchased*price;
+                                await SellerReceiveCryptoBuy.save({session});
+                            }else{
+                                if (session.inTransaction()) {
+                                    Remaining+=item.funds;
+                                    await session.abortTransaction();
+                                }
+                            }
+
+                            let SellerReduceBalanceBuy=await Account.findOne({user:item.user, currency:quote, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
+                            if(SellerReduceBalanceBuy){
+                                SellerReduceBalanceBuy.frozen_balance-=item.purchased;
+                                await SellerReduceBalanceBuy.save({session});
+                            }else{
+                                if (session.inTransaction()) {
+                                    Remaining+=item.funds;
+                                    await session.abortTransaction();
+                                }
+                            }
+
                         }else if(side&&side.toUpperCase()==="SELL"){
-                            let ReceiveCryptoSell=await Account.findOne({user:item.user, currency:base, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
+                            let ReceiveCryptoSell=await Account.findOne({user:id, currency:base, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
                             if(ReceiveCryptoSell){
                                 ReceiveCryptoSell.balance+=item.purchased*price;
                                 await ReceiveCryptoSell.save({session});
                             }else{
-                                Remaining+=item.funds;
-                                await session.abortTransaction();
+                                if (session.inTransaction()) {
+                                    Remaining+=item.funds;
+                                    await session.abortTransaction();
+                                }
                             }
-                            let ReduceBalanceSell=await Account.findOne({user:item.user, currency:quote, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
+                            let ReduceBalanceSell=await Account.findOne({user:id, currency:quote, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
                             if(ReduceBalanceSell){
                                 ReduceBalanceSell.balance-=item.purchased;
                                 await ReduceBalanceSell.save({session});
                             }else{
+                                if (session.inTransaction()) {
+                                    Remaining+=item.funds;
+                                    await session.abortTransaction();
+                                }
+                            }
+
+                            let SellerReduceBalanceSell=await Account.findOne({user:item.user, currency:base, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
+                            if(SellerReduceBalanceSell){
+                                SellerReduceBalanceSell.frozen_balance-=item.purchased*price;
+                                await SellerReduceBalanceSell.save({session});
+                            }else{
+                                if (session.inTransaction()) {
+                                    Remaining+=item.funds;
+                                    await session.abortTransaction();
+                                }
+                            }
+                            let SellerReceiveCryptoSell=await Account.findOne({user:item.user, currency:quote, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
+                            if(SellerReceiveCryptoSell){
+                                SellerReceiveCryptoSell.balance+=item.purchased;
+                                await SellerReceiveCryptoSell.save({session});
+                            }else{
+                                if (session.inTransaction()) {
+                                    Remaining+=item.funds;
+                                    await session.abortTransaction();
+                                }
+                            }
+
+                        }
+
+                        let TxOrders=await OrderTx.findOne({
+                            user:item.user,
+                            _id:item._id,
+                            balance:{$gte:0}, frozen_balance:{$gte:0}
+                        }).session(session);
+                        if(TxOrders){
+                            TxOrders.amount-=item.amount;
+                            await TxOrders.save({session});
+                        }else{
+                            if (session.inTransaction()) {
                                 Remaining+=item.funds;
                                 await session.abortTransaction();
                             }
                         }
-
-                        await OrderTx.findOneAndUpdate({
-                            user:item.user,
-                            _id:item._id
-                        },{
-                            amount:item.amount
-                        },{strict:true}).session(session);
 
                         if (session.inTransaction()) {
                             await session.commitTransaction();
@@ -119,9 +180,9 @@ class Tx {
             // console.log(Saldo >= Remaining,Saldo,Remaining)
             if (Remaining > 0) {
                 if (Saldo >= amount) {
-                    WalletAccount.balance -= Number(Remaining);
                     if (side && typeof (side) === "string" && side.toUpperCase() === "SELL") {
                         WalletAccount.balance -= Number(Remaining / price);
+                        WalletAccount.frozen_balance += Number(Remaining / price);
                         let TxBuy=await WalletAccount.save({ session });
                         if(TxBuy){
                             MakerOrder=await OrderTx.create([{
@@ -136,6 +197,7 @@ class Tx {
                         }
                     } else if (side && typeof (side) === "string" && side.toUpperCase() === "BUY") {
                         WalletAccount.balance -= Number(Remaining);
+                        WalletAccount.frozen_balance += Number(Remaining);
                         let TxSell=await WalletAccount.save({ session });
                         if(TxSell){
                             MakerOrder=await OrderTx.create([{
