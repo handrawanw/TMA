@@ -65,6 +65,22 @@ class Tx {
 
                     if (item.hasOwnProperty("purchased")) {
 
+                        let TxOrders=await OrderTx.findOne({
+                            user:item.user,
+                            _id:item._id,
+                            amount:{$gte:0}
+                        }).session(session);
+                        if(TxOrders){
+                            TxOrders.amount=item.amount;
+                            await TxOrders.save({session});
+                        }else{
+                            if (session.inTransaction()){
+                                console.log("rollback tx orders");
+                                Remaining+=item.funds;
+                                await session.abortTransaction();
+                            }
+                        }
+
                         if(side&&side.toUpperCase()==="BUY"){
                             let BuyerReceiveCryptoBuy=await Account.findOne({user:id, currency:quote, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
                             if(BuyerReceiveCryptoBuy){
@@ -154,25 +170,10 @@ class Tx {
 
                         }
 
-                        let TxOrders=await OrderTx.findOne({
-                            user:item.user,
-                            _id:item._id,
-                            balance:{$gte:0}, frozen_balance:{$gte:0}
-                        }).session(session);
-                        if(TxOrders){
-                            TxOrders.amount-=item.amount;
-                            await TxOrders.save({session});
-                        }else{
-                            if (session.inTransaction()) {
-                                Remaining+=item.funds;
-                                await session.abortTransaction();
-                            }
-                        }
 
                         if (session.inTransaction()) {
                             await session.commitTransaction();
                         }
-                        
                     }
                 }
             }
