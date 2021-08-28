@@ -14,21 +14,21 @@ class Tx {
             })
         }).catch(next);
     }
-
+    
     static async Orders(req, res, next) {
         const { id } = req.decoded;
         const { amount, price, side, type, base, quote } = req.body;
         let session = await mongoose.startSession();
-
+        
         try {
-
+            
             let Remaining = side && typeof (side) === "string" && side.toUpperCase() === "BUY" ? Number(amount) : Number(amount) * Number(price) || 0;
             let STypes = side && typeof (side) === "string" && side.toUpperCase() === "BUY" ? base : quote;
             let STypesOrder = side && typeof (side) === "string" && side.toUpperCase() === "BUY" ? "SELL" : "BUY";
             let QPriceOrder = side && typeof (side) === "string" && side.toUpperCase() === "BUY" ? {$lte:Number(price)} : {$gte:Number(price)};
             let WalletAccount = await Account.findOne({ user: id, currency: STypes, balance:{$gte:0}, frozen_balance:{$gte:0}}).session(session);
             let Saldo = WalletAccount && WalletAccount.balance > 0 ? WalletAccount.balance:0;
-
+            
             if (Saldo < Number(amount)) {
                 throw new Error("Maaf saldo anda tidak cukup");
             }
@@ -37,7 +37,7 @@ class Tx {
             let Market = Object.assign([], TxOrder);
             let MakerOrder=[];
             let TakerOrder=[];
-
+            
             if (TxOrder.length > 0) {
                 for (let item of Market) {
                     session.startTransaction({
@@ -181,6 +181,10 @@ class Tx {
             // console.log(Saldo >= Remaining,Saldo,Remaining)
             if (Remaining > 0) {
                 if (Saldo >= amount) {
+                    session.startTransaction({
+                        readConcern: { level: "snapshot" }, writeConcern: "majority"
+                    });
+                    await session.incrementTransactionNumber();
                     if (side && typeof (side) === "string" && side.toUpperCase() === "SELL") {
                         WalletAccount.balance -= Number(Remaining / price);
                         WalletAccount.frozen_balance += Number(Remaining / price);

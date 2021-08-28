@@ -35,4 +35,8 @@ const Schema=new mongoose.Schema({
     }
 });
 
-module.exports=mongoose.model("Order",Schema);
+const Order=mongoose.model("Order",Schema);
+
+Order.createIndexes({price:-1})
+
+module.exports=Order;
